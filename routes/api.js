@@ -1,14 +1,20 @@
 "use strict";
+const express = require('express');
+const router = express.Router();
 const StockModel = require("../models").Stock;
 const fetch = require("node-fetch");
+const crypto = require("crypto");
+
+function anonymizeIP(ip) {
+  return crypto.createHash('sha256').update(ip).digest('hex');
+}
 
 async function createStock(stock, like, ip) {
   const newStock = new StockModel({
     symbol: stock,
     likes: like ? [ip] : [],
   });
-  const savedNew = await newStock.save();
-  return savedNew;
+  return await newStock.save();
 }
 
 async function findStock(stock) {
@@ -16,84 +22,80 @@ async function findStock(stock) {
 }
 
 async function saveStock(stock, like, ip) {
-  let saved = {};
+  console.log('Saving stock:', stock, 'Like:', like, 'IP:', ip);
   const foundStock = await findStock(stock);
+  console.log('Found stock:', foundStock);
   if (!foundStock) {
-    const createsaved = await createStock(stock, like, ip);
-    saved = createsaved;
-    return saved;
-  } else {
-    if (like && foundStock.likes.indexOf(ip) === -1) {
-      foundStock.likes.push(ip);
-    }
-    saved = await foundStock.save();
-    return saved;
+    return await createStock(stock, like, ip);
   }
+  if (like && !foundStock.likes.includes(ip)) {
+    console.log('Adding IP to likes:', ip);
+    foundStock.likes.push(ip);
+    return await foundStock.save();
+  }
+  console.log('IP already exists or no like:', ip);
+  return foundStock;
 }
 
 async function getStock(stock) {
   const response = await fetch(
     `https://stock-price-checker-proxy.freecodecamp.rocks/v1/stock/${stock}/quote`
   );
-  const { symbol, latestPrice } = await response.json();
+  const data = await response.json();
+  if (!data || data === 'Unknown symbol') {
+    throw new Error('Invalid stock symbol');
+  }
+  const { symbol, latestPrice } = data;
   return { symbol, latestPrice };
 }
 
-module.exports = function (app) {
-  //https://stock-price-checker-proxy.freecodecamp.rocks/v1/stock/TSLA/quote
-
-  app.route("/api/stock-prices").get(async function (req, res) {
+router.get("/stock-prices", async function (req, res) {
+  try {
     const { stock, like } = req.query;
+    const anonymizedIP = anonymizeIP(req.ip);
+    console.log('Request IP:', req.ip, 'Anonymized IP:', anonymizedIP);
+
+    if (!stock) {
+      return res.status(400).json({ error: 'Stock symbol required' });
+    }
+
     if (Array.isArray(stock)) {
-      console.log("stocks", stock);
+      const [stock1, stock2] = await Promise.all([
+        getStock(stock[0].toUpperCase()),
+        getStock(stock[1].toUpperCase()),
+      ]);
 
-      const { symbol, latestPrice } = await getStock(stock[0]);
-      const { symbol: symbol2, latestPrice: latestPrice2 } = await getStock(
-        stock[1]
-      );
-
-      const firststock = await saveStock(stock[0], like, req.ip);
-      const secondstock = await saveStock(stock[1], like, req.ip);
-
-      let stockData = [];
-      if (!symbol) {
-        stockData.push({
-          rel_likes: firststock.likes.length - secondstock.likes.length,
-        });
-      } else {
-        stockData.push({
-          stock: symbol,
-          price: latestPrice,
-          rel_likes: firststock.likes.length - secondstock.likes.length,
-        });
+      if (!stock1.symbol || !stock2.symbol) {
+        return res.status(400).json({ error: 'Invalid stock symbol' });
       }
 
-      if (!symbol2) {
-        stockData.push({
-          rel_likes: secondstock.likes.length - firststock.likes.length,
-        });
-      } else {
-        stockData.push({
-          stock: symbol2,
-          price: latestPrice2,
-          rel_likes: secondstock.likes.length - firststock.likes.length,
-        });
-      }
+      const [firstStock, secondStock] = await Promise.all([
+        saveStock(stock[0].toUpperCase(), like, anonymizedIP),
+        saveStock(stock[1].toUpperCase(), like, anonymizedIP),
+      ]);
 
-      res.json({
-        stockData,
-      });
-      return;
+      const stockData = [
+        {
+          stock: stock1.symbol,
+          price: stock1.latestPrice,
+          rel_likes: firstStock.likes.length - secondStock.likes.length,
+        },
+        {
+          stock: stock2.symbol,
+          price: stock2.latestPrice,
+          rel_likes: secondStock.likes.length - firstStock.likes.length,
+        },
+      ];
+
+      return res.json({ stockData });
     }
-    const { symbol, latestPrice } = await getStock(stock);
+
+    const { symbol, latestPrice } = await getStock(stock.toUpperCase());
     if (!symbol) {
-      res.json({ stockData: { likes: like ? 1 : 0 } });
-      return;
+      return res.status(400).json({ error: 'Invalid stock symbol' });
     }
 
-    const oneStockData = await saveStock(symbol, like, req.ip);
-    console.log("One Stock Data", oneStockData);
-
+    const oneStockData = await saveStock(symbol.toUpperCase(), like, anonymizedIP);
     res.json({
       stockData: {
         stock: symbol,
@@ -101,5 +103,10 @@ module.exports = function (app) {
         likes: oneStockData.likes.length,
       },
     });
-  });
-};
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Server error' });
+  }
+});
+
+module.exports = router;
