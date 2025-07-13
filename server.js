@@ -15,7 +15,7 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'https://cdn.freecodecamp.org'],
         fontSrc: ["'self'"],
         connectSrc: ["'self'", 'https://stock-price-checker-proxy.freecodecamp.rocks'],
