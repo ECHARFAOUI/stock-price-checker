@@ -11,11 +11,11 @@ const app = express();
 app.use(
   helmet({
     contentSecurityPolicy: {
-      useDefaults: true,
+      useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'"],
         imgSrc: ["'self'", 'https://cdn.freecodecamp.org'],
         fontSrc: ["'self'"],
         connectSrc: ["'self'", 'https://stock-price-checker-proxy.freecodecamp.rocks'],
@@ -24,11 +24,7 @@ app.use(
         baseUri: ["'self'"],
         formAction: ["'self'"]
       }
-    },
-    referrerPolicy: { policy: 'no-referrer' },
-    xssFilter: true,
-    noSniff: true,
-    hidePoweredBy: true
+    }
   })
 );
 
