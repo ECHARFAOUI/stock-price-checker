@@ -8,14 +8,16 @@ require('dotenv').config();
 const app = express();
 
 // إعدادات Helmet الصحيحة لاجتياز اختبار Content-Security-Policy
-app.use(helmet()); // تفعيل helmet الافتراضي
 app.use(
-  helmet.contentSecurityPolicy({
-    useDefaults: true,
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'"],
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
     },
   })
 );
