@@ -11,17 +11,10 @@ const app = express();
 app.use(
   helmet({
     contentSecurityPolicy: {
-      useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
-        imgSrc: ["'self'"],
-        connectSrc: ["'self'"],
-        fontSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        mediaSrc: ["'self'"],
-        frameSrc: ["'none'"],
       },
     },
   })
@@ -42,6 +35,9 @@ app.get('/', (req, res) => {
 
 // المسارات الخاصة بـ /api
 app.use('/api', routes);
+
+// إضافة مسارات الاختبار
+require('./routes/fcctesting.js')(app);
 
 // معالجة 404
 app.use((req, res) => {
