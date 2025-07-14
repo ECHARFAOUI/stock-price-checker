@@ -7,24 +7,16 @@ require('dotenv').config();
 
 const app = express();
 
-// إعدادات Helmet الشاملة بما فيها Content Security Policy
+// إعدادات Helmet الصحيحة لاجتياز اختبار Content-Security-Policy
+app.use(helmet()); // تفعيل helmet الافتراضي
 app.use(
-  helmet({
-    contentSecurityPolicy: {
-      useDefaults: false,
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
-        imgSrc: ["'self'", 'https://cdn.freecodecamp.org'],
-        fontSrc: ["'self'"],
-        connectSrc: ["'self'", 'https://stock-price-checker-proxy.freecodecamp.rocks'],
-        objectSrc: ["'none'"],
-        frameSrc: ["'none'"],
-        baseUri: ["'self'"],
-        formAction: ["'self'"]
-      }
-    }
+  helmet.contentSecurityPolicy({
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
+    },
   })
 );
 
